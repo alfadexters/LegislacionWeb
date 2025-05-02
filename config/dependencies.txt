@@ -1,0 +1,8 @@
+# Instala la siguiente dependencia para usar el SDK oficial de Google Generative AI:
+npm install @google/generative-ai
+
+# O si usas yarn:
+yarn add @google/generative-ai
+
+# O si usas pnpm:
+pnpm add @google/generative-ai
