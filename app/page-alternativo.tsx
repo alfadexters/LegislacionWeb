@@ -7,7 +7,7 @@ import InterpretacionIA from "@/components/interpretacion-ia"
 import TablaComparativa from "@/components/tabla-comparativa"
 import PorcentajeCoincidencia from "@/components/porcentaje-coincidencia"
 import ApiKeyModal from "@/components/api-key-modal"
-import ConfirmacionDialogo from "@/components/confirmacion-dialogo"
+import DialogoConfirmacionAlternativo from "@/components/dialogo-confirmacion-alternativo"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { useLocalStorage } from "@/lib/use-local-storage"
@@ -38,7 +38,7 @@ export default function Home() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const { toast } = useToast()
 
-  // Estado para controlar la visibilidad del diálogo de confirmación
+  // Estado para controlar la visibilidad del diálogo de confirmación alternativo
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 
   // Cargar la clave API del localStorage al iniciar
@@ -208,13 +208,13 @@ export default function Home() {
         </TabsContent>
       </Tabs>
 
-      {/* Diálogo de confirmación para reiniciar el análisis */}
-      <ConfirmacionDialogo
-        open={confirmDialogOpen}
-        onOpenChange={setConfirmDialogOpen}
+      {/* Diálogo de confirmación alternativo */}
+      <DialogoConfirmacionAlternativo
+        isOpen={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
         onConfirm={reiniciarAnalisis}
         title="Comenzar nuevo análisis"
-        description="¿Estás seguro de que deseas comenzar un nuevo análisis? Se borrarán todos los datos ingresados hasta ahora."
+        message="¿Estás seguro de que deseas comenzar un nuevo análisis? Se borrarán todos los datos ingresados hasta ahora."
         cancelText="Cancelar"
         confirmText="Sí, comenzar nuevo análisis"
       />

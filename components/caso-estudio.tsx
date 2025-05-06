@@ -104,6 +104,23 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
     })
   }
 
+  const handleDescargarCaso = () => {
+    const blob = new Blob([casoEstudio], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "caso-estudio-iso14001.txt"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    toast({
+      title: "Caso de estudio descargado",
+      description: "El caso de estudio ha sido descargado como archivo de texto.",
+    })
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -240,7 +257,12 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
             <Button variant="outline" onClick={() => setCasoEstudio("")}>
               Borrar caso
             </Button>
-            <Button onClick={onComplete}>Continuar a interpretación</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleDescargarCaso}>
+                Guardar caso
+              </Button>
+              <Button onClick={onComplete}>Continuar a interpretación</Button>
+            </div>
           </CardFooter>
         </Card>
       )}

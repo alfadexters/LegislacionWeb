@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,6 +27,7 @@ interface PorcentajeCoincidenciaProps {
   porcentajeCoincidencia: number
   setPorcentajeCoincidencia: (porcentaje: number) => void
   apiKey: string
+  onReiniciar: () => void
 }
 
 interface ResultadoCoincidencia {
@@ -40,6 +43,7 @@ export default function PorcentajeCoincidencia({
   porcentajeCoincidencia,
   setPorcentajeCoincidencia,
   apiKey,
+  onReiniciar,
 }: PorcentajeCoincidenciaProps) {
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState<ResultadoCoincidencia | null>(null)
@@ -95,6 +99,15 @@ export default function PorcentajeCoincidencia({
   }, [porcentajeCoincidencia, resultado])
 
   const nivelCoincidencia = getNivelCoincidencia(porcentajeCoincidencia || 0)
+
+  // Asegurarnos de que el evento de reinicio se maneje correctamente
+  const handleReiniciar = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (typeof onReiniciar === "function") {
+      onReiniciar()
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -168,7 +181,7 @@ export default function PorcentajeCoincidencia({
               Has completado todos los pasos del análisis de la norma ISO 14001. Puedes revisar cualquier sección
               anterior utilizando las pestañas de navegación.
             </p>
-            <Button variant="outline" onClick={() => window.location.reload()}>
+            <Button variant="outline" onClick={handleReiniciar}>
               Comenzar nuevo análisis
             </Button>
           </div>
