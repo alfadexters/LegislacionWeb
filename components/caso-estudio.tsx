@@ -1,15 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Loader2, CheckCircle2 } from "lucide-react"
+import { Loader2, CheckCircle2, Download, FileDown } from "lucide-react"
 import { generarCasoEstudio } from "@/lib/gemini-service"
 import { useToast } from "@/components/ui/use-toast"
+import { generatePDF } from "@/lib/pdf-service"
 
 interface CasoEstudioProps {
   casoEstudio: string
@@ -25,10 +26,12 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
     empresa: "",
     contexto: "",
     problemas: "",
-    acciones: "",
-    resultados: "",
+    desafios: "",
+    impactos: "",
+    expectativas: "",
   })
   const { toast } = useToast()
+  const casoEstudioRef = useRef<HTMLDivElement>(null)
 
   const handleGenerarCaso = async () => {
     if (!apiKey) {
@@ -46,7 +49,7 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
       setCasoEstudio(caso)
       toast({
         title: "Caso de estudio generado",
-        description: "Se ha generado un caso de estudio ficticio con éxito.",
+        description: "Se ha generado un caso de estudio para análisis y solución.",
       })
     } catch (error) {
       console.error(error)
@@ -62,7 +65,7 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
 
   const handleSubmitManual = () => {
     // Validar campos
-    if (!casoManual.contexto || !casoManual.problemas || !casoManual.acciones || !casoManual.resultados) {
+    if (!casoManual.contexto || !casoManual.problemas || !casoManual.desafios || !casoManual.impactos) {
       toast({
         title: "Campos incompletos",
         description: "Por favor completa todos los campos obligatorios.",
@@ -71,10 +74,10 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
       return
     }
 
-    if ((casoManual.contexto + casoManual.problemas + casoManual.acciones + casoManual.resultados).length < 100) {
+    if ((casoManual.contexto + casoManual.problemas + casoManual.desafios + casoManual.impactos).length < 200) {
       toast({
         title: "Contenido insuficiente",
-        description: "El caso de estudio debe tener al menos 100 palabras en total.",
+        description: "El caso de estudio debe tener al menos 200 palabras en total.",
         variant: "destructive",
       })
       return
@@ -82,19 +85,22 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
 
     // Construir el caso de estudio
     const casoCompleto = `
-      ${casoManual.empresa ? `Empresa: ${casoManual.empresa}` : "Caso de Estudio ISO 14001"}
+      ${casoManual.empresa ? `Empresa: ${casoManual.empresa}` : "Caso de Estudio para Implementación de ISO 14001"}
       
-      Contexto:
+      Contexto de la empresa:
       ${casoManual.contexto}
       
-      Problemas Ambientales:
+      Problemas ambientales:
       ${casoManual.problemas}
       
-      Acciones Implementadas:
-      ${casoManual.acciones}
+      Desafíos organizacionales:
+      ${casoManual.desafios}
       
-      Resultados Obtenidos:
-      ${casoManual.resultados}
+      Impactos negativos actuales:
+      ${casoManual.impactos}
+      
+      Expectativas de las partes interesadas:
+      ${casoManual.expectativas || "No especificadas"}
     `
 
     setCasoEstudio(casoCompleto)
@@ -121,13 +127,26 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
     })
   }
 
+  const handleDescargarPDF = async () => {
+    if (casoEstudioRef.current && casoEstudio) {
+      await generatePDF(casoEstudioRef.current, "caso-estudio-iso14001.pdf")
+    } else {
+      toast({
+        title: "Error al descargar",
+        description: "No hay caso de estudio para descargar.",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Caso de Estudio - ISO 14001</CardTitle>
+          <CardTitle>Caso de Estudio - Problema de Implementación ISO 14001</CardTitle>
           <CardDescription>
-            Selecciona cómo quieres obtener el caso de estudio para analizar la implementación de la norma ISO 14001.
+            Selecciona cómo quieres obtener el caso de estudio para analizar y proponer soluciones basadas en la norma
+            ISO 14001.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -168,7 +187,8 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
           <CardHeader>
             <CardTitle>Ingresa tu caso de estudio</CardTitle>
             <CardDescription>
-              Completa los siguientes campos para crear tu propio caso de estudio sobre implementación de ISO 14001.
+              Completa los siguientes campos para crear un caso de estudio sobre problemas de implementación de ISO
+              14001.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -183,50 +203,61 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contexto">Contexto (sector, tamaño, ubicación) *</Label>
+              <Label htmlFor="contexto">Contexto de la empresa (sector, tamaño, ubicación, historia) *</Label>
               <Textarea
                 id="contexto"
                 value={casoManual.contexto}
                 onChange={(e) => setCasoManual({ ...casoManual, contexto: e.target.value })}
-                placeholder="Describe el sector, tamaño y ubicación de la empresa..."
+                placeholder="Describe el contexto detallado de la empresa..."
                 rows={3}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="problemas">Problemas ambientales *</Label>
+              <Label htmlFor="problemas">Problemas ambientales específicos *</Label>
               <Textarea
                 id="problemas"
                 value={casoManual.problemas}
                 onChange={(e) => setCasoManual({ ...casoManual, problemas: e.target.value })}
-                placeholder="Describe los problemas ambientales identificados..."
+                placeholder="Describe los problemas ambientales específicos (emisiones, residuos, etc.)..."
                 rows={3}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="acciones">Acciones tomadas *</Label>
+              <Label htmlFor="desafios">Desafíos organizacionales *</Label>
               <Textarea
-                id="acciones"
-                value={casoManual.acciones}
-                onChange={(e) => setCasoManual({ ...casoManual, acciones: e.target.value })}
-                placeholder="Describe las acciones implementadas para cumplir con ISO 14001..."
+                id="desafios"
+                value={casoManual.desafios}
+                onChange={(e) => setCasoManual({ ...casoManual, desafios: e.target.value })}
+                placeholder="Describe los desafíos organizacionales (resistencia al cambio, falta de recursos, etc.)..."
                 rows={3}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="resultados">Resultados obtenidos *</Label>
+              <Label htmlFor="impactos">Impactos negativos actuales *</Label>
               <Textarea
-                id="resultados"
-                value={casoManual.resultados}
-                onChange={(e) => setCasoManual({ ...casoManual, resultados: e.target.value })}
-                placeholder="Describe los resultados obtenidos tras la implementación..."
+                id="impactos"
+                value={casoManual.impactos}
+                onChange={(e) => setCasoManual({ ...casoManual, impactos: e.target.value })}
+                placeholder="Describe los impactos negativos actuales (multas, imagen pública, etc.)..."
                 rows={3}
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="expectativas">Expectativas de las partes interesadas (opcional)</Label>
+              <Textarea
+                id="expectativas"
+                value={casoManual.expectativas}
+                onChange={(e) => setCasoManual({ ...casoManual, expectativas: e.target.value })}
+                placeholder="Describe las expectativas de las partes interesadas (clientes, comunidad, etc.)..."
+                rows={3}
               />
             </div>
           </CardContent>
@@ -241,13 +272,13 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
       {casoEstudio && (
         <Card>
           <CardHeader>
-            <CardTitle>Caso de Estudio</CardTitle>
+            <CardTitle>Caso de Estudio para Análisis y Solución</CardTitle>
             <CardDescription>
               {opcion === "ia" ? "Caso generado por Inteligencia Artificial" : "Caso ingresado manualmente"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="prose prose-green max-w-none">
+            <div className="prose prose-green max-w-none" ref={casoEstudioRef}>
               {casoEstudio.split("\n").map((parrafo, index) => (
                 <p key={index}>{parrafo}</p>
               ))}
@@ -259,9 +290,14 @@ export default function CasoEstudio({ casoEstudio, setCasoEstudio, onComplete, a
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleDescargarCaso}>
-                Guardar caso
+                <Download className="mr-2 h-4 w-4" />
+                Guardar texto
               </Button>
-              <Button onClick={onComplete}>Continuar a interpretación</Button>
+              <Button variant="outline" onClick={handleDescargarPDF}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Descargar PDF
+              </Button>
+              <Button onClick={onComplete}>Continuar a análisis</Button>
             </div>
           </CardFooter>
         </Card>

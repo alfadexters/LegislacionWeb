@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Settings } from "lucide-react"
+import PlanificacionImplementacion from "@/components/planificacion-implementacion"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("caso-estudio")
@@ -34,6 +35,14 @@ export default function Home() {
     analisisCompleto: "",
   })
   const [porcentajeCoincidencia, setPorcentajeCoincidencia] = useLocalStorage("porcentaje-coincidencia", 0)
+  const [planImplementacion, setPlanImplementacion] = useLocalStorage("plan-implementacion", {
+    objetivos: "",
+    acciones: "",
+    recursos: "",
+    cronograma: "",
+    indicadores: "",
+    planCompleto: "",
+  })
   const [apiKey, setApiKey] = useState("")
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const { toast } = useToast()
@@ -58,9 +67,10 @@ export default function Home() {
     if (interpretacionUsuario.interpretacionCompleta) completedSteps++
     if (interpretacionIA.analisisCompleto) completedSteps++
     if (porcentajeCoincidencia > 0) completedSteps++
+    if (planImplementacion.planCompleto) completedSteps++
 
-    setProgress((completedSteps / 4) * 100)
-  }, [casoEstudio, interpretacionUsuario, interpretacionIA, porcentajeCoincidencia])
+    setProgress((completedSteps / 5) * 100)
+  }, [casoEstudio, interpretacionUsuario, interpretacionIA, porcentajeCoincidencia, planImplementacion])
 
   const handleTabChange = (value: string) => {
     // Validar si se puede cambiar de pestaña
@@ -91,6 +101,15 @@ export default function Home() {
       return
     }
 
+    if (value === "planificacion-implementacion" && !porcentajeCoincidencia) {
+      toast({
+        title: "Porcentaje de coincidencia requerido",
+        description: "Primero debes calcular el porcentaje de coincidencia.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setActiveTab(value)
   }
 
@@ -107,8 +126,7 @@ export default function Home() {
 
   // Función para reiniciar el análisis
   const reiniciarAnalisis = () => {
-    // Borrar todos los datos excepto la clave API
-    setCasoEstudio("")
+    // Borrar todos los datos excepto el caso de estudio y la clave API
     setInterpretacionUsuario({
       fortalezas: "",
       debilidades: "",
@@ -123,10 +141,18 @@ export default function Home() {
       analisisCompleto: "",
     })
     setPorcentajeCoincidencia(0)
+    setPlanImplementacion({
+      objetivos: "",
+      acciones: "",
+      recursos: "",
+      cronograma: "",
+      indicadores: "",
+      planCompleto: "",
+    })
     setActiveTab("caso-estudio")
     toast({
       title: "Análisis reiniciado",
-      description: "Se ha iniciado un nuevo análisis. Todos los campos han sido borrados.",
+      description: "Se ha iniciado un nuevo análisis. Se han conservado los datos del caso de estudio.",
     })
   }
 
@@ -151,12 +177,13 @@ export default function Home() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-8">
+        <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8">
           <TabsTrigger value="caso-estudio">1. Caso de Estudio</TabsTrigger>
           <TabsTrigger value="interpretacion-usuario">2. Tu Interpretación</TabsTrigger>
           <TabsTrigger value="interpretacion-ia">3. Análisis IA</TabsTrigger>
           <TabsTrigger value="tabla-comparativa">4. Comparativa</TabsTrigger>
           <TabsTrigger value="porcentaje-coincidencia">5. Coincidencia</TabsTrigger>
+          <TabsTrigger value="planificacion-implementacion">6. Planificación</TabsTrigger>
         </TabsList>
 
         <TabsContent value="caso-estudio">
@@ -204,6 +231,25 @@ export default function Home() {
             setPorcentajeCoincidencia={setPorcentajeCoincidencia}
             apiKey={apiKey}
             onReiniciar={mostrarConfirmacion}
+            onComplete={() => setActiveTab("planificacion-implementacion")}
+          />
+        </TabsContent>
+
+        <TabsContent value="planificacion-implementacion">
+          <PlanificacionImplementacion
+            casoEstudio={casoEstudio}
+            interpretacionUsuario={interpretacionUsuario}
+            interpretacionIA={interpretacionIA}
+            planImplementacion={planImplementacion}
+            setPlanImplementacion={setPlanImplementacion}
+            apiKey={apiKey}
+            onComplete={() =>
+              toast({
+                title: "Plan completado",
+                description: "Has completado el plan de implementación de ISO 14001.",
+              })
+            }
+            onReiniciar={mostrarConfirmacion}
           />
         </TabsContent>
       </Tabs>
@@ -214,7 +260,7 @@ export default function Home() {
         onOpenChange={setConfirmDialogOpen}
         onConfirm={reiniciarAnalisis}
         title="Comenzar nuevo análisis"
-        description="¿Estás seguro de que deseas comenzar un nuevo análisis? Se borrarán todos los datos ingresados hasta ahora."
+        description="¿Estás seguro de que deseas comenzar un nuevo análisis? Se conservará el caso de estudio, pero se borrarán todos los demás datos."
         cancelText="Cancelar"
         confirmText="Sí, comenzar nuevo análisis"
       />

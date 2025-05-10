@@ -84,8 +84,8 @@ export default function InterpretacionUsuario({
 
     if (formValues.interpretacionCompleta.length < 50) {
       toast({
-        title: "Interpretación insuficiente",
-        description: "Tu interpretación completa debe tener al menos 50 palabras.",
+        title: "Respuesta insuficiente",
+        description: "Tu respuesta a la pregunta final debe tener al menos 50 caracteres.",
         variant: "destructive",
       })
       return
@@ -94,8 +94,8 @@ export default function InterpretacionUsuario({
     // Guardar interpretación
     setInterpretacion(formValues)
     toast({
-      title: "Interpretación guardada",
-      description: "Tu interpretación ha sido guardada con éxito.",
+      title: "Respuestas guardadas",
+      description: "Tus respuestas han sido guardadas con éxito.",
     })
     onComplete()
   }
@@ -104,9 +104,10 @@ export default function InterpretacionUsuario({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Tu Interpretación del Caso</CardTitle>
+          <CardTitle>Tu Análisis del Caso</CardTitle>
           <CardDescription>
-            Analiza el caso de estudio y proporciona tu interpretación sobre la implementación de ISO 14001.
+            Analiza el caso de estudio y responde a las siguientes preguntas para proponer una solución basada en la
+            norma ISO 14001.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -122,43 +123,53 @@ export default function InterpretacionUsuario({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fortalezas">¿Qué fortalezas identificas en la implementación de ISO 14001? *</Label>
+            <Label htmlFor="fortalezas">
+              ¿Qué aspectos positivos o fortalezas identificas en la empresa que podrían facilitar la implementación de
+              ISO 14001? *
+            </Label>
             <Textarea
               id="fortalezas"
               value={formValues.fortalezas}
               onChange={(e) => setFormValues({ ...formValues, fortalezas: e.target.value })}
-              placeholder="Describe las fortalezas que identificas en el caso..."
+              placeholder="Identifica aspectos positivos como compromiso de la dirección, recursos disponibles, etc."
               rows={3}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="debilidades">¿Qué debilidades o áreas de mejora identificas? *</Label>
+            <Label htmlFor="debilidades">
+              ¿Cuáles son los principales problemas ambientales y organizacionales que dificultan la implementación de
+              ISO 14001? *
+            </Label>
             <Textarea
               id="debilidades"
               value={formValues.debilidades}
               onChange={(e) => setFormValues({ ...formValues, debilidades: e.target.value })}
-              placeholder="Describe las debilidades o áreas de mejora que identificas..."
+              placeholder="Identifica problemas como emisiones, residuos, falta de conocimiento, resistencia al cambio, etc."
               rows={3}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="recomendaciones">¿Qué recomendaciones harías para mejorar la implementación? *</Label>
+            <Label htmlFor="recomendaciones">
+              ¿Qué requisitos de la norma ISO 14001 serían prioritarios para abordar los problemas identificados? *
+            </Label>
             <Textarea
               id="recomendaciones"
               value={formValues.recomendaciones}
               onChange={(e) => setFormValues({ ...formValues, recomendaciones: e.target.value })}
-              placeholder="Describe tus recomendaciones para mejorar la implementación..."
+              placeholder="Identifica qué elementos de la norma serían más relevantes para este caso..."
               rows={3}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="mb-2 block">¿Qué cláusulas de ISO 14001 se aplicaron en el caso? *</Label>
+            <Label className="mb-2 block">
+              ¿Qué cláusulas de ISO 14001 consideras más relevantes para este caso? *
+            </Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {clausulasISO14001.map((clausula) => (
                 <div key={clausula.id} className="flex items-center space-x-2">
@@ -174,21 +185,23 @@ export default function InterpretacionUsuario({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="interpretacionCompleta">Tu interpretación completa del caso *</Label>
+            <Label htmlFor="interpretacionCompleta">
+              ¿Qué acciones recomendarías para implementar la norma ISO 14001 y resolver esta situación? *
+            </Label>
             <Textarea
               id="interpretacionCompleta"
               value={formValues.interpretacionCompleta}
               onChange={(e) => setFormValues({ ...formValues, interpretacionCompleta: e.target.value })}
-              placeholder="Proporciona tu interpretación completa del caso (máximo 500 palabras)..."
+              placeholder="Detalla las acciones específicas que recomendarías para implementar ISO 14001 y resolver los problemas identificados..."
               rows={6}
               required
             />
-            <p className="text-sm text-gray-500">{formValues.interpretacionCompleta.length}/500 caracteres</p>
+            <p className="text-sm text-gray-500">{formValues.interpretacionCompleta.length} caracteres</p>
           </div>
         </CardContent>
         <CardFooter>
           <Button onClick={handleSubmit} className="w-full">
-            Guardar interpretación y continuar
+            Guardar respuestas y continuar
           </Button>
         </CardFooter>
       </Card>
