@@ -15,74 +15,107 @@ export async function generatePDF(element: HTMLElement, fileName: string, title 
     const pdf = new jsPDF("p", "mm", "a4")
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = pdf.internal.pageSize.getHeight()
-    const margin = 10 // margen en mm
+    const margin = 15 // Aumentado el margen para mejor legibilidad
+    const contentWidth = pdfWidth - 2 * margin
 
     // Añadir encabezado con estilo
-    pdf.setFillColor(39, 174, 96) // Color verde para ISO 14001
-    pdf.rect(0, 0, pdfWidth, 25, "F")
-    pdf.setTextColor(255, 255, 255)
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(16)
+    const addHeader = (pageTitle = title) => {
+      pdf.setFillColor(39, 174, 96) // Color verde para ISO 14001
+      pdf.rect(0, 0, pdfWidth, 25, "F")
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(16)
 
-    // Título del documento
-    const documentTitle = title || "Sistema de Gestión Ambiental - ISO 14001"
-    pdf.text(documentTitle, pdfWidth / 2, 15, { align: "center" })
+      // Título del documento
+      const documentTitle = pageTitle || "Sistema de Gestión Ambiental - ISO 14001"
+      pdf.text(documentTitle, pdfWidth / 2, 15, { align: "center" })
 
-    // Añadir fecha y hora
-    pdf.setFontSize(10)
-    const date = new Date().toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-    pdf.text(`Generado el: ${date}`, pdfWidth - margin, 22, { align: "right" })
+      // Añadir fecha y hora
+      pdf.setFontSize(10)
+      const date = new Date().toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+      pdf.text(`Generado el: ${date}`, pdfWidth - margin, 22, { align: "right" })
+    }
 
-    // Capturar el elemento como imagen
+    // Función para añadir pie de página
+    const addFooter = (pageNumber: number) => {
+      pdf.setFillColor(240, 240, 240)
+      pdf.rect(0, pdfHeight - 10, pdfWidth, 10, "F")
+      pdf.setTextColor(100, 100, 100)
+      pdf.setFontSize(8)
+      pdf.text("Sistema de Gestión Ambiental - Norma ISO 14001", 10, pdfHeight - 4)
+      pdf.text(`Página ${pageNumber}`, pdfWidth - 10, pdfHeight - 4, { align: "right" })
+    }
+
+    // Capturar el elemento como imagen con mejor calidad
     const canvas = await html2canvas(element, {
       scale: 2, // Mayor escala para mejor calidad
       useCORS: true,
       logging: false,
       allowTaint: true,
+      backgroundColor: "#ffffff", // Fondo blanco para evitar transparencias
     })
 
     const imgData = canvas.toDataURL("image/png")
-    const imgWidth = pdfWidth - 2 * margin
+
+    // Calcular dimensiones de la imagen manteniendo la proporción
+    const imgWidth = contentWidth
     const imgHeight = (canvas.height * imgWidth) / canvas.width
 
-    // Si la imagen es más alta que la página, dividirla en múltiples páginas
+    // Inicializar variables para el manejo de páginas
     let heightLeft = imgHeight
     let position = 0
     let pageNumber = 1
 
     // Primera página - dejar espacio para el encabezado
-    pdf.addImage(imgData, "PNG", margin, 30, imgWidth, imgHeight)
-    heightLeft -= pdfHeight - 40 // 30 para encabezado + 10 para pie de página
+    addHeader()
+
+    // Espacio disponible en la primera página (considerando encabezado y pie de página)
+    const firstPageAvailableHeight = pdfHeight - 40 // 25 para encabezado + 15 para pie de página
+
+    // Si la imagen cabe en la primera página
+    if (imgHeight <= firstPageAvailableHeight) {
+      pdf.addImage(imgData, "PNG", margin, 30, imgWidth, imgHeight)
+    } else {
+      // Si la imagen es más alta, mostrar solo la parte que cabe en la primera página
+      pdf.addImage(imgData, "PNG", margin, 30, imgWidth, firstPageAvailableHeight)
+      heightLeft -= firstPageAvailableHeight
+      position = firstPageAvailableHeight
+    }
 
     // Añadir pie de página en la primera página
-    addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
-    pageNumber++
+    addFooter(pageNumber)
 
     // Páginas adicionales si es necesario
     while (heightLeft > 0) {
+      pageNumber++
       pdf.addPage()
 
       // Añadir encabezado en cada página
-      pdf.setFillColor(39, 174, 96)
-      pdf.rect(0, 0, pdfWidth, 25, "F")
-      pdf.setTextColor(255, 255, 255)
-      pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(16)
-      pdf.text(documentTitle, pdfWidth / 2, 15, { align: "center" })
+      addHeader()
 
-      position = heightLeft - imgHeight
-      pdf.addImage(imgData, "PNG", margin, 30, imgWidth, imgHeight)
-      heightLeft -= pdfHeight - 40
+      // Espacio disponible en las páginas siguientes
+      const pageAvailableHeight = pdfHeight - 40
+
+      // Si el contenido restante cabe en esta página
+      if (heightLeft <= pageAvailableHeight) {
+        // Mostrar el resto de la imagen
+        pdf.addImage(imgData, "PNG", margin, 30, imgWidth, imgHeight)
+      } else {
+        // Si aún queda más contenido para páginas adicionales
+        pdf.addImage(imgData, "PNG", margin, 30, imgWidth, pageAvailableHeight)
+        position += pageAvailableHeight
+      }
+
+      heightLeft -= pageAvailableHeight
 
       // Añadir pie de página en cada página
-      addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
-      pageNumber++
+      addFooter(pageNumber)
     }
 
     // Guardar el PDF
@@ -102,143 +135,7 @@ export async function generatePDF(element: HTMLElement, fileName: string, title 
   }
 }
 
-// Función para añadir pie de página
-function addFooter(pdf: jsPDF, pdfWidth: number, pdfHeight: number, pageNumber: number) {
-  pdf.setFillColor(240, 240, 240)
-  pdf.rect(0, pdfHeight - 10, pdfWidth, 10, "F")
-  pdf.setTextColor(100, 100, 100)
-  pdf.setFontSize(8)
-  pdf.text("Sistema de Gestión Ambiental - Norma ISO 14001", 10, pdfHeight - 4)
-  pdf.text(`Página ${pageNumber}`, pdfWidth - 10, pdfHeight - 4, { align: "right" })
-}
-
-// Función para generar PDF combinado de comparativa y coincidencia con mejor diseño
-export async function generateCombinedPDF(
-  comparativaElement: HTMLElement,
-  coincidenciaElement: HTMLElement,
-  fileName: string,
-) {
-  try {
-    toast({
-      title: "Generando PDF combinado",
-      description: "Por favor espera mientras se genera el PDF...",
-    })
-
-    const pdf = new jsPDF("p", "mm", "a4")
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = pdf.internal.pageSize.getHeight()
-    const margin = 10 // margen en mm
-    let pageNumber = 1
-
-    // Añadir encabezado con estilo
-    pdf.setFillColor(39, 174, 96) // Color verde para ISO 14001
-    pdf.rect(0, 0, pdfWidth, 25, "F")
-    pdf.setTextColor(255, 255, 255)
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(16)
-    pdf.text("Comparativa y Coincidencia - ISO 14001", pdfWidth / 2, 15, { align: "center" })
-
-    // Añadir fecha y hora
-    pdf.setFontSize(10)
-    const date = new Date().toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-    pdf.text(`Generado el: ${date}`, pdfWidth - margin, 22, { align: "right" })
-
-    // Título de la sección Comparativa
-    pdf.setTextColor(39, 174, 96)
-    pdf.setFontSize(14)
-    pdf.text("Tabla Comparativa", margin, 35)
-
-    // Línea divisoria
-    pdf.setDrawColor(39, 174, 96)
-    pdf.setLineWidth(0.5)
-    pdf.line(margin, 37, pdfWidth - margin, 37)
-
-    // Capturar el primer elemento (comparativa)
-    const canvas1 = await html2canvas(comparativaElement, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      allowTaint: true,
-    })
-
-    const imgData1 = canvas1.toDataURL("image/png")
-    const imgWidth1 = pdfWidth - 2 * margin
-    const imgHeight1 = (canvas1.height * imgWidth1) / canvas1.width
-
-    // Añadir la primera imagen
-    pdf.addImage(imgData1, "PNG", margin, 40, imgWidth1, imgHeight1)
-
-    // Añadir pie de página en la primera página
-    addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
-    pageNumber++
-
-    // Añadir una nueva página para el segundo elemento
-    pdf.addPage()
-
-    // Añadir encabezado en la segunda página
-    pdf.setFillColor(39, 174, 96)
-    pdf.rect(0, 0, pdfWidth, 25, "F")
-    pdf.setTextColor(255, 255, 255)
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(16)
-    pdf.text("Comparativa y Coincidencia - ISO 14001", pdfWidth / 2, 15, { align: "center" })
-
-    // Añadir fecha y hora
-    pdf.setFontSize(10)
-    pdf.text(`Generado el: ${date}`, pdfWidth - margin, 22, { align: "right" })
-
-    // Título de la sección Coincidencia
-    pdf.setTextColor(39, 174, 96)
-    pdf.setFontSize(14)
-    pdf.text("Porcentaje de Coincidencia", margin, 35)
-
-    // Línea divisoria
-    pdf.setDrawColor(39, 174, 96)
-    pdf.setLineWidth(0.5)
-    pdf.line(margin, 37, pdfWidth - margin, 37)
-
-    // Capturar el segundo elemento (coincidencia)
-    const canvas2 = await html2canvas(coincidenciaElement, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      allowTaint: true,
-    })
-
-    const imgData2 = canvas2.toDataURL("image/png")
-    const imgWidth2 = pdfWidth - 2 * margin
-    const imgHeight2 = (canvas2.height * imgWidth2) / canvas2.width
-
-    // Añadir la segunda imagen
-    pdf.addImage(imgData2, "PNG", margin, 40, imgWidth2, imgHeight2)
-
-    // Añadir pie de página en la segunda página
-    addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
-
-    // Guardar el PDF
-    pdf.save(fileName)
-
-    toast({
-      title: "PDF combinado generado con éxito",
-      description: `El archivo ${fileName} ha sido descargado.`,
-    })
-  } catch (error) {
-    console.error("Error al generar PDF combinado:", error)
-    toast({
-      title: "Error al generar PDF combinado",
-      description: "No se pudo generar el PDF. Por favor intenta de nuevo.",
-      variant: "destructive",
-    })
-  }
-}
-
-// Nueva función para generar PDF combinado directamente desde los datos
+// Nueva función mejorada para generar PDF directamente desde datos estructurados
 export async function generateDataCombinedPDF(
   interpretacionUsuario: any,
   interpretacionIA: any,
@@ -255,7 +152,8 @@ export async function generateDataCombinedPDF(
     const pdf = new jsPDF("p", "mm", "a4")
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = pdf.internal.pageSize.getHeight()
-    const margin = 10 // margen en mm
+    const margin = 15 // Margen aumentado para mejor legibilidad
+    const contentWidth = pdfWidth - 2 * margin
     let pageNumber = 1
     let yPosition = 40 // Posición inicial después del encabezado
 
@@ -280,25 +178,92 @@ export async function generateDataCombinedPDF(
       pdf.text(`Generado el: ${date}`, pdfWidth - margin, 22, { align: "right" })
     }
 
-    // Función para añadir texto con salto de línea automático
-    const addWrappedText = (text: string, y: number, maxWidth: number, lineHeight: number) => {
-      const lines = pdf.splitTextToSize(text, maxWidth)
-      pdf.text(lines, margin, y)
-      return y + lineHeight * lines.length
+    // Función para añadir pie de página
+    const addFooter = (pageNumber: number) => {
+      pdf.setFillColor(240, 240, 240)
+      pdf.rect(0, pdfHeight - 10, pdfWidth, 10, "F")
+      pdf.setTextColor(100, 100, 100)
+      pdf.setFontSize(8)
+      pdf.text("Sistema de Gestión Ambiental - Norma ISO 14001", margin, pdfHeight - 4)
+      pdf.text(`Página ${pageNumber}`, pdfWidth - margin, pdfHeight - 4, { align: "right" })
+    }
+
+    // Función mejorada para añadir texto con salto de línea automático y control de página
+    const addWrappedText = (text: string, y: number, maxWidth: number, lineHeight: number, fontStyle = "normal") => {
+      pdf.setFont("helvetica", fontStyle)
+
+      // Asegurar que el texto no sea undefined o null
+      const safeText = text || ""
+
+      // Dividir el texto en líneas según el ancho máximo
+      const lines = pdf.splitTextToSize(safeText, maxWidth)
+
+      let currentY = y
+      for (let i = 0; i < lines.length; i++) {
+        // Verificar si necesitamos una nueva página
+        if (currentY > pdfHeight - 20) {
+          addFooter(pageNumber)
+          pdf.addPage()
+          pageNumber++
+          addHeader("Comparativa y Coincidencia - ISO 14001")
+          currentY = 40 // Reiniciar posición Y después del encabezado
+        }
+
+        // Asegurar que el texto sea visible (no blanco sobre blanco)
+        pdf.setTextColor(0, 0, 0)
+        pdf.text(lines[i], margin, currentY)
+        currentY += lineHeight
+      }
+
+      return currentY
+    }
+
+    // Función mejorada para añadir sección con título
+    const addSection = (title: string, content: string, bgColor: number[] = [245, 245, 245]) => {
+      // Verificar si necesitamos una nueva página
+      if (yPosition > pdfHeight - 40) {
+        addFooter(pageNumber)
+        pdf.addPage()
+        pageNumber++
+        addHeader("Comparativa y Coincidencia - ISO 14001")
+        yPosition = 40
+      }
+
+      // Añadir título de sección con fondo coloreado
+      pdf.setFillColor(bgColor[0], bgColor[1], bgColor[2])
+      pdf.roundedRect(margin, yPosition - 5, contentWidth, 10, 2, 2, "F")
+
+      // Asegurar que el texto del título sea visible sobre el fondo
+      pdf.setTextColor(50, 50, 50)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(11)
+      pdf.text(title, margin + 5, yPosition)
+      yPosition += 10
+
+      // Añadir contenido con color de texto negro para asegurar visibilidad
+      pdf.setTextColor(0, 0, 0)
+      pdf.setFontSize(10)
+      pdf.setFont("helvetica", "normal")
+
+      // Asegurar que el contenido no sea undefined o null
+      const safeContent = content || ""
+      yPosition = addWrappedText(safeContent, yPosition, contentWidth, 5)
+      yPosition += 10 // Espacio después de la sección
+
+      return yPosition
     }
 
     // Añadir encabezado a la primera página
     addHeader("Comparativa y Coincidencia - ISO 14001")
 
-    // Título de la sección Comparativa
+    // Título de la sección Comparativa con estilo mejorado
+    pdf.setFillColor(39, 174, 96, 0.1) // Verde claro con transparencia
+    pdf.roundedRect(margin, 30, contentWidth, 10, 3, 3, "F")
     pdf.setTextColor(39, 174, 96)
     pdf.setFontSize(14)
-    pdf.text("Tabla Comparativa", margin, 35)
-
-    // Línea divisoria
-    pdf.setDrawColor(39, 174, 96)
-    pdf.setLineWidth(0.5)
-    pdf.line(margin, 37, pdfWidth - margin, 37)
+    pdf.setFont("helvetica", "bold")
+    pdf.text("Tabla Comparativa", margin + 5, 37)
+    yPosition = 45
 
     // Configurar estilo para el contenido
     pdf.setTextColor(0, 0, 0)
@@ -311,117 +276,152 @@ export async function generateDataCombinedPDF(
         nombre: "Fortalezas identificadas",
         pregunta:
           "¿Qué aspectos positivos o fortalezas identificas en la empresa que podrían facilitar la implementación de ISO 14001?",
-        usuario: interpretacionUsuario.fortalezas,
-        ia: interpretacionIA.fortalezas,
+        usuario: interpretacionUsuario.fortalezas || "",
+        ia: interpretacionIA.fortalezas || "",
+        bgColor: [230, 247, 230], // Verde muy claro
       },
       {
         nombre: "Problemas identificados",
         pregunta:
           "¿Cuáles son los principales problemas ambientales y organizacionales que dificultan la implementación de ISO 14001?",
-        usuario: interpretacionUsuario.debilidades,
-        ia: interpretacionIA.debilidades,
+        usuario: interpretacionUsuario.debilidades || "",
+        ia: interpretacionIA.debilidades || "",
+        bgColor: [252, 232, 232], // Rojo muy claro
       },
       {
         nombre: "Requisitos prioritarios",
         pregunta: "¿Qué requisitos de la norma ISO 14001 serían prioritarios para abordar los problemas identificados?",
-        usuario: interpretacionUsuario.recomendaciones,
-        ia: interpretacionIA.recomendaciones,
+        usuario: interpretacionUsuario.recomendaciones || "",
+        ia: interpretacionIA.recomendaciones || "",
+        bgColor: [232, 240, 254], // Azul muy claro
       },
       {
         nombre: "Acciones recomendadas",
         pregunta: "¿Qué acciones recomendarías para implementar la norma ISO 14001 y resolver esta situación?",
-        usuario: interpretacionUsuario.interpretacionCompleta,
-        ia: interpretacionIA.analisisCompleto,
+        usuario: interpretacionUsuario.interpretacionCompleta || "",
+        ia: interpretacionIA.analisisCompleto || "",
+        bgColor: [240, 240, 240], // Gris claro
       },
     ]
 
-    // Añadir cada criterio a la tabla
+    // Añadir cada criterio a la tabla con mejor formato
     for (const criterio of criterios) {
       // Verificar si necesitamos una nueva página
-      if (yPosition > pdfHeight - 30) {
+      if (yPosition > pdfHeight - 60) {
+        addFooter(pageNumber)
         pdf.addPage()
         pageNumber++
         addHeader("Comparativa y Coincidencia - ISO 14001")
-        addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
         yPosition = 40
       }
 
-      // Añadir título del criterio
+      // Añadir título del criterio con fondo coloreado
+      pdf.setFillColor(criterio.bgColor[0], criterio.bgColor[1], criterio.bgColor[2])
+      pdf.roundedRect(margin, yPosition - 5, contentWidth, 10, 2, 2, "F")
       pdf.setFont("helvetica", "bold")
-      pdf.text(criterio.pregunta, margin, yPosition)
-      yPosition += 6
+      pdf.setTextColor(50, 50, 50)
+
+      // Dividir la pregunta en múltiples líneas si es necesario para evitar truncamiento
+      const preguntaLines = pdf.splitTextToSize(criterio.pregunta, contentWidth - 10)
+      pdf.text(preguntaLines, margin + 5, yPosition)
+
+      // Ajustar la posición Y basado en el número de líneas de la pregunta
+      yPosition += 5 + preguntaLines.length * 5
 
       // Añadir respuesta del usuario
-      pdf.setFont("helvetica", "normal")
+      pdf.setFont("helvetica", "bold")
+      pdf.setTextColor(80, 80, 80)
       pdf.text("Tu respuesta:", margin, yPosition)
       yPosition += 5
-      yPosition = addWrappedText(criterio.usuario, yPosition, pdfWidth - 2 * margin, 5)
+      pdf.setFont("helvetica", "normal")
+      pdf.setTextColor(0, 0, 0) // Asegurar texto negro para visibilidad
+      yPosition = addWrappedText(criterio.usuario, yPosition, contentWidth - 5, 5)
       yPosition += 5
 
       // Añadir respuesta de la IA
+      pdf.setFont("helvetica", "bold")
+      pdf.setTextColor(80, 80, 80)
       pdf.text("Respuesta de la IA:", margin, yPosition)
       yPosition += 5
-      yPosition = addWrappedText(criterio.ia, yPosition, pdfWidth - 2 * margin, 5)
+      pdf.setFont("helvetica", "normal")
+      pdf.setTextColor(0, 0, 0) // Asegurar texto negro para visibilidad
+      yPosition = addWrappedText(criterio.ia, yPosition, contentWidth - 5, 5)
       yPosition += 10
     }
 
-    // Añadir cláusulas
+    // Añadir cláusulas con mejor formato
     if (yPosition > pdfHeight - 50) {
+      addFooter(pageNumber)
       pdf.addPage()
       pageNumber++
       addHeader("Comparativa y Coincidencia - ISO 14001")
-      addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
       yPosition = 40
     }
 
-    // Añadir título de cláusulas
+    // Añadir título de cláusulas con estilo
+    pdf.setFillColor(230, 230, 250) // Lavanda claro
+    pdf.roundedRect(margin, yPosition - 5, contentWidth, 10, 2, 2, "F")
     pdf.setFont("helvetica", "bold")
-    pdf.text("Cláusulas ISO 14001 consideradas relevantes", margin, yPosition)
-    yPosition += 6
+    pdf.setTextColor(50, 50, 50)
+    pdf.text("Cláusulas ISO 14001 consideradas relevantes", margin + 5, yPosition)
+    yPosition += 10
 
     // Añadir cláusulas del usuario
-    pdf.setFont("helvetica", "normal")
+    pdf.setFont("helvetica", "bold")
+    pdf.setTextColor(80, 80, 80)
     pdf.text("Tus cláusulas:", margin, yPosition)
     yPosition += 5
-    const clausulasUsuario = interpretacionUsuario.clausulas.map((c: string) => `Cláusula ${c}`).join(", ")
-    yPosition = addWrappedText(clausulasUsuario, yPosition, pdfWidth - 2 * margin, 5)
+    pdf.setFont("helvetica", "normal")
+    pdf.setTextColor(0, 0, 0) // Asegurar texto negro para visibilidad
+    const clausulasUsuario =
+      interpretacionUsuario.clausulas && interpretacionUsuario.clausulas.length > 0
+        ? interpretacionUsuario.clausulas.map((c: string) => `Cláusula ${c}`).join(", ")
+        : "No especificadas"
+    yPosition = addWrappedText(clausulasUsuario, yPosition, contentWidth - 5, 5)
     yPosition += 5
 
     // Añadir cláusulas de la IA
+    pdf.setFont("helvetica", "bold")
+    pdf.setTextColor(80, 80, 80)
     pdf.text("Cláusulas de la IA:", margin, yPosition)
     yPosition += 5
-    const clausulasIA = interpretacionIA.clausulasRelevantes
-      ? interpretacionIA.clausulasRelevantes.map((c: string) => `Cláusula ${c}`).join(", ")
-      : "No especificadas"
-    yPosition = addWrappedText(clausulasIA, yPosition, pdfWidth - 2 * margin, 5)
+    pdf.setFont("helvetica", "normal")
+    pdf.setTextColor(0, 0, 0) // Asegurar texto negro para visibilidad
+    const clausulasIA =
+      interpretacionIA.clausulasRelevantes && interpretacionIA.clausulasRelevantes.length > 0
+        ? interpretacionIA.clausulasRelevantes.map((c: string) => `Cláusula ${c}`).join(", ")
+        : "No especificadas"
+    yPosition = addWrappedText(clausulasIA, yPosition, contentWidth - 5, 5)
+    yPosition += 10
 
     // Añadir pie de página en la primera página
-    addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
+    addFooter(pageNumber)
 
     // Nueva página para la sección de coincidencia
     pdf.addPage()
     pageNumber++
     addHeader("Comparativa y Coincidencia - ISO 14001")
 
-    // Título de la sección Coincidencia
+    // Título de la sección Coincidencia con estilo mejorado
+    pdf.setFillColor(39, 174, 96, 0.1) // Verde claro con transparencia
+    pdf.roundedRect(margin, 30, contentWidth, 10, 3, 3, "F")
     pdf.setTextColor(39, 174, 96)
     pdf.setFontSize(14)
-    pdf.text("Porcentaje de Coincidencia", margin, 35)
-
-    // Línea divisoria
-    pdf.setDrawColor(39, 174, 96)
-    pdf.setLineWidth(0.5)
-    pdf.line(margin, 37, pdfWidth - margin, 37)
+    pdf.setFont("helvetica", "bold")
+    pdf.text("Porcentaje de Coincidencia", margin + 5, 37)
+    yPosition = 45
 
     // Configurar estilo para el contenido
     pdf.setTextColor(0, 0, 0)
     pdf.setFontSize(10)
     pdf.setFont("helvetica", "normal")
 
-    // Añadir porcentaje de coincidencia
-    yPosition = 45
+    // Añadir porcentaje de coincidencia con estilo visual mejorado
+    pdf.setFillColor(240, 240, 240)
+    pdf.roundedRect(margin, yPosition - 5, contentWidth, 25, 5, 5, "F")
+
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(14)
+    pdf.setFontSize(16)
 
     // Determinar color según el porcentaje
     let colorTexto = [0, 0, 0] // Negro por defecto
@@ -434,8 +434,7 @@ export async function generateDataCombinedPDF(
     }
 
     pdf.setTextColor(colorTexto[0], colorTexto[1], colorTexto[2])
-    pdf.text(`Coincidencia: ${porcentajeCoincidencia}%`, pdfWidth / 2, yPosition, { align: "center" })
-    yPosition += 10
+    pdf.text(`Coincidencia: ${porcentajeCoincidencia}%`, pdfWidth / 2, yPosition + 5, { align: "center" })
 
     // Añadir nivel de coincidencia
     let nivelCoincidencia = "Baja"
@@ -445,8 +444,8 @@ export async function generateDataCombinedPDF(
       nivelCoincidencia = "Media"
     }
 
-    pdf.text(`Nivel de coincidencia: ${nivelCoincidencia}`, pdfWidth / 2, yPosition, { align: "center" })
-    yPosition += 15
+    pdf.text(`Nivel de coincidencia: ${nivelCoincidencia}`, pdfWidth / 2, yPosition + 15, { align: "center" })
+    yPosition += 30
 
     // Volver al color normal para el resto del contenido
     pdf.setTextColor(0, 0, 0)
@@ -455,55 +454,44 @@ export async function generateDataCombinedPDF(
 
     // Añadir explicación si existe
     if (resultadoCoincidencia && resultadoCoincidencia.explicacion) {
-      pdf.setFont("helvetica", "bold")
-      pdf.text("Explicación:", margin, yPosition)
-      yPosition += 5
-      pdf.setFont("helvetica", "normal")
-      yPosition = addWrappedText(resultadoCoincidencia.explicacion, yPosition, pdfWidth - 2 * margin, 5)
-      yPosition += 10
+      yPosition = addSection("Explicación:", resultadoCoincidencia.explicacion, [230, 247, 230])
     }
 
     // Añadir puntos coincidentes si existen
     if (resultadoCoincidencia && resultadoCoincidencia.puntosCoincidentes) {
-      pdf.setFont("helvetica", "bold")
-      pdf.text("Puntos coincidentes:", margin, yPosition)
-      yPosition += 5
-      pdf.setFont("helvetica", "normal")
-      yPosition = addWrappedText(resultadoCoincidencia.puntosCoincidentes, yPosition, pdfWidth - 2 * margin, 5)
-      yPosition += 10
+      yPosition = addSection("Puntos coincidentes:", resultadoCoincidencia.puntosCoincidentes, [230, 247, 230])
     }
 
     // Añadir puntos divergentes si existen
     if (resultadoCoincidencia && resultadoCoincidencia.puntosDivergentes) {
-      pdf.setFont("helvetica", "bold")
-      pdf.text("Puntos divergentes:", margin, yPosition)
-      yPosition += 5
-      pdf.setFont("helvetica", "normal")
-      yPosition = addWrappedText(resultadoCoincidencia.puntosDivergentes, yPosition, pdfWidth - 2 * margin, 5)
-      yPosition += 10
+      yPosition = addSection("Puntos divergentes:", resultadoCoincidencia.puntosDivergentes, [252, 232, 232])
     }
 
     // Añadir coincidencia en cláusulas si existe
     if (resultadoCoincidencia && resultadoCoincidencia.coincidenciaClausulas) {
-      pdf.setFont("helvetica", "bold")
-      pdf.text("Coincidencia en cláusulas ISO 14001:", margin, yPosition)
-      yPosition += 5
-      pdf.setFont("helvetica", "normal")
-      yPosition = addWrappedText(resultadoCoincidencia.coincidenciaClausulas, yPosition, pdfWidth - 2 * margin, 5)
-      yPosition += 10
+      yPosition = addSection(
+        "Coincidencia en cláusulas ISO 14001:",
+        resultadoCoincidencia.coincidenciaClausulas,
+        [230, 230, 250],
+      )
     }
 
-    // Añadir conclusión
+    // Añadir conclusión con estilo
+    pdf.setFillColor(232, 240, 254) // Azul muy claro
+    pdf.roundedRect(margin, yPosition - 5, contentWidth, 10, 2, 2, "F")
     pdf.setFont("helvetica", "bold")
-    pdf.text("Conclusión:", margin, yPosition)
-    yPosition += 5
+    pdf.setTextColor(50, 50, 50)
+    pdf.text("Conclusión:", margin + 5, yPosition)
+    yPosition += 10
+
     pdf.setFont("helvetica", "normal")
+    pdf.setTextColor(0, 0, 0) // Asegurar texto negro para visibilidad
     const conclusion =
       "Este ejercicio demuestra cómo diferentes perspectivas pueden enriquecer la implementación de la norma ISO 14001. Tanto tu análisis como el de la IA ofrecen puntos de vista valiosos que, en conjunto, pueden mejorar significativamente la gestión ambiental de una organización."
-    yPosition = addWrappedText(conclusion, yPosition, pdfWidth - 2 * margin, 5)
+    yPosition = addWrappedText(conclusion, yPosition, contentWidth, 5)
 
     // Añadir pie de página en la segunda página
-    addFooter(pdf, pdfWidth, pdfHeight, pageNumber)
+    addFooter(pageNumber)
 
     // Guardar el PDF
     pdf.save(fileName)
@@ -516,6 +504,202 @@ export async function generateDataCombinedPDF(
     console.error("Error al generar PDF combinado:", error)
     toast({
       title: "Error al generar PDF combinado",
+      description: "No se pudo generar el PDF. Por favor intenta de nuevo.",
+      variant: "destructive",
+    })
+  }
+}
+
+// Nueva función para generar PDF del plan de implementación con formato mejorado
+export async function generatePlanPDF(planImplementacion: any, fileName: string) {
+  try {
+    toast({
+      title: "Generando PDF del Plan",
+      description: "Por favor espera mientras se genera el PDF...",
+    })
+
+    const pdf = new jsPDF("p", "mm", "a4")
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = pdf.internal.pageSize.getHeight()
+    const margin = 15 // Margen aumentado para mejor legibilidad
+    const contentWidth = pdfWidth - 2 * margin
+    let pageNumber = 1
+    let yPosition = 40 // Posición inicial después del encabezado
+
+    // Función para añadir encabezado
+    const addHeader = () => {
+      pdf.setFillColor(39, 174, 96) // Color verde para ISO 14001
+      pdf.rect(0, 0, pdfWidth, 25, "F")
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(16)
+      pdf.text("Plan de Implementación ISO 14001", pdfWidth / 2, 15, { align: "center" })
+
+      // Añadir fecha y hora
+      pdf.setFontSize(10)
+      const date = new Date().toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+      pdf.text(`Generado el: ${date}`, pdfWidth - margin, 22, { align: "right" })
+    }
+
+    // Función para añadir pie de página
+    const addFooter = (pageNumber: number) => {
+      pdf.setFillColor(240, 240, 240)
+      pdf.rect(0, pdfHeight - 10, pdfWidth, 10, "F")
+      pdf.setTextColor(100, 100, 100)
+      pdf.setFontSize(8)
+      pdf.text("Sistema de Gestión Ambiental - Norma ISO 14001", margin, pdfHeight - 4)
+      pdf.text(`Página ${pageNumber}`, pdfWidth - margin, pdfHeight - 4, { align: "right" })
+    }
+
+    // Función mejorada para añadir texto con salto de línea automático y control de página
+    const addWrappedText = (text: string, y: number, maxWidth: number, lineHeight: number, fontStyle = "normal") => {
+      pdf.setFont("helvetica", fontStyle)
+
+      // Asegurar que el texto no sea undefined o null
+      const safeText = text || ""
+
+      // Dividir el texto en líneas según el ancho máximo
+      const lines = pdf.splitTextToSize(safeText, maxWidth)
+
+      let currentY = y
+      for (let i = 0; i < lines.length; i++) {
+        // Verificar si necesitamos una nueva página
+        if (currentY > pdfHeight - 20) {
+          addFooter(pageNumber)
+          pdf.addPage()
+          pageNumber++
+          addHeader()
+          currentY = 40 // Reiniciar posición Y después del encabezado
+        }
+
+        // Asegurar que el texto sea visible (no blanco sobre blanco)
+        pdf.setTextColor(0, 0, 0)
+        pdf.text(lines[i], margin, currentY)
+        currentY += lineHeight
+      }
+
+      return currentY
+    }
+
+    // Función mejorada para añadir sección con título y color de fondo
+    const addSection = (title: string, content: string, bgColor: number[] = [245, 245, 245]) => {
+      // Verificar si necesitamos una nueva página
+      if (yPosition > pdfHeight - 40) {
+        addFooter(pageNumber)
+        pdf.addPage()
+        pageNumber++
+        addHeader()
+        yPosition = 40
+      }
+
+      // Añadir título de sección con estilo
+      pdf.setFillColor(bgColor[0], bgColor[1], bgColor[2])
+      pdf.roundedRect(margin, yPosition - 5, contentWidth, 10, 2, 2, "F")
+      pdf.setTextColor(50, 50, 50)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(12)
+
+      // Dividir el título en múltiples líneas si es necesario
+      const titleLines = pdf.splitTextToSize(title, contentWidth - 10)
+      pdf.text(titleLines, margin + 5, yPosition)
+
+      // Ajustar la posición Y basado en el número de líneas del título
+      yPosition += 5 + (titleLines.length - 1) * 5
+
+      // Añadir contenido con color de texto negro para asegurar visibilidad
+      pdf.setTextColor(0, 0, 0)
+      pdf.setFontSize(10)
+      pdf.setFont("helvetica", "normal")
+
+      // Asegurar que el contenido no sea undefined o null
+      const safeContent = content || ""
+      yPosition = addWrappedText(safeContent, yPosition, contentWidth, 5)
+      yPosition += 10 // Espacio después de la sección
+
+      return yPosition
+    }
+
+    // Añadir encabezado a la primera página
+    addHeader()
+
+    // Añadir título principal con estilo
+    pdf.setFillColor(39, 174, 96, 0.1) // Verde claro con transparencia
+    pdf.roundedRect(margin, 30, contentWidth, 10, 3, 3, "F")
+    pdf.setTextColor(39, 174, 96)
+    pdf.setFontSize(14)
+    pdf.setFont("helvetica", "bold")
+    pdf.text("Plan Detallado de Implementación", margin + 5, 37)
+    yPosition = 45
+
+    // Añadir secciones del plan con diferentes colores de fondo para mejor distinción visual
+    if (planImplementacion.objetivos) {
+      yPosition = addSection("1. Objetivos", planImplementacion.objetivos, [230, 247, 230]) // Verde claro
+    }
+
+    if (planImplementacion.acciones) {
+      yPosition = addSection("2. Acciones", planImplementacion.acciones, [232, 240, 254]) // Azul claro
+    }
+
+    if (planImplementacion.recursos) {
+      yPosition = addSection("3. Recursos Necesarios", planImplementacion.recursos, [230, 230, 250]) // Lavanda claro
+    }
+
+    if (planImplementacion.cronograma) {
+      yPosition = addSection("4. Cronograma de Implementación", planImplementacion.cronograma, [255, 243, 224]) // Naranja claro
+    }
+
+    if (planImplementacion.indicadores) {
+      yPosition = addSection("5. Indicadores de Seguimiento", planImplementacion.indicadores, [225, 245, 254]) // Celeste claro
+    }
+
+    // Añadir pie de página
+    addFooter(pageNumber)
+
+    // Si el plan completo es muy extenso, añadirlo en páginas adicionales
+    if (planImplementacion.planCompleto) {
+      pdf.addPage()
+      pageNumber++
+      addHeader()
+
+      // Título para el plan completo
+      pdf.setFillColor(39, 174, 96, 0.1) // Verde claro con transparencia
+      pdf.roundedRect(margin, 30, contentWidth, 10, 3, 3, "F")
+      pdf.setTextColor(39, 174, 96)
+      pdf.setFontSize(14)
+      pdf.setFont("helvetica", "bold")
+      pdf.text("Plan Completo de Implementación", margin + 5, 37)
+      yPosition = 45
+
+      // Añadir el plan completo con formato mejorado
+      pdf.setTextColor(0, 0, 0) // Asegurar texto negro para visibilidad
+      pdf.setFontSize(10)
+      pdf.setFont("helvetica", "normal")
+
+      // Asegurar que el plan completo no sea undefined o null
+      const safePlanCompleto = planImplementacion.planCompleto || ""
+      yPosition = addWrappedText(safePlanCompleto, yPosition, contentWidth, 5)
+
+      // Añadir pie de página
+      addFooter(pageNumber)
+    }
+
+    // Guardar el PDF
+    pdf.save(fileName)
+
+    toast({
+      title: "PDF del plan generado con éxito",
+      description: `El archivo ${fileName} ha sido descargado.`,
+    })
+  } catch (error) {
+    console.error("Error al generar PDF del plan:", error)
+    toast({
+      title: "Error al generar PDF del plan",
       description: "No se pudo generar el PDF. Por favor intenta de nuevo.",
       variant: "destructive",
     })

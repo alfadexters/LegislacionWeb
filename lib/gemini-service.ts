@@ -16,9 +16,8 @@ export async function generarCasoEstudio(apiKey: string) {
     const genAI = getAIClient(apiKey)
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" })
 
-    const prompt = `Genera un caso de estudio real o ficticio detallado (500-700 palabras) sobre una empresa que enfrenta problemas ambientales significativos y necesita implementar la norma ISO 14001 para resolverlos.
+    const prompt = `Genera un caso de estudio detallado (500-700 palabras) sobre una empresa que enfrenta problemas ambientales significativos y necesita implementar la norma ISO 14001 para resolverlos.
 
-    Si el caso es real referencia de donde lo sacaste
     El caso debe incluir:
     1. Contexto detallado de la empresa (sector, tamaño, ubicación, historia)
     2. Problemas ambientales específicos que enfrenta (emisiones, residuos, consumo de recursos, cumplimiento legal)
@@ -56,7 +55,7 @@ export async function analizarCasoEstudio(casoEstudio: string, interpretacionUsu
     - Debilidades: ${interpretacionUsuario.debilidades}
     - Recomendaciones: ${interpretacionUsuario.recomendaciones}
     - Pregunta final: ${interpretacionUsuario.interpretacionCompleta}
-    - Cláusulas relevantes seleccionadas por el usuario: ${interpretacionUsuario.clausulas.map((c) => `Cláusula ${c}`).join(", ")}
+    - Cláusulas relevantes seleccionadas por el usuario: ${interpretacionUsuario.clausulas.map((c: string) => `Cláusula ${c}`).join(", ")}
     
     Proporciona tu análisis en formato JSON con la siguiente estructura:
     {
@@ -64,10 +63,10 @@ export async function analizarCasoEstudio(casoEstudio: string, interpretacionUsu
       "debilidades": "Respuesta detallada a la pregunta sobre debilidades",
       "recomendaciones": "Respuesta detallada a la pregunta sobre recomendaciones",
       "analisisCompleto": "Respuesta completa a la pregunta final sobre acciones recomendadas para implementar ISO 14001 y resolver la situación (300-400 palabras)",
-      "clausulasRelevantes": ["4", "5", "6", "7", "8", "9", "10"] // Incluye unicamente los números de las cláusulas que consideres relevantes para este caso
+      "clausulasRelevantes": ["4", "5", "6", "7", "8", "9", "10"] // Incluye solo los números de las cláusulas que consideres relevantes para este caso
     }
     
-    Para las cláusulas relevantes, considera las siguientes cláusulas de ISO 14001:
+    Para las cláusulas relevantes, elige las que mejor se apegan al caso de estudio, son las siguientes cláusulas de ISO 14001:
     - 4. Contexto de la organización
     - 5. Liderazgo
     - 6. Planificación
@@ -113,11 +112,11 @@ export async function calcularPorcentajeCoincidencia(
     
     Interpretación del usuario:
     - Respuesta a la pregunta final: ${interpretacionUsuario.interpretacionCompleta}
-    - Cláusulas relevantes: ${interpretacionUsuario.clausulas.map((c) => `Cláusula ${c}`).join(", ")}
+    - Cláusulas relevantes: ${interpretacionUsuario.clausulas.map((c: string) => `Cláusula ${c}`).join(", ")}
     
     Interpretación de la IA:
     - Respuesta a la pregunta final: ${interpretacionIA.analisisCompleto}
-    - Cláusulas relevantes: ${interpretacionIA.clausulasRelevantes ? interpretacionIA.clausulasRelevantes.map((c) => `Cláusula ${c}`).join(", ") : "No especificadas"}
+    - Cláusulas relevantes: ${interpretacionIA.clausulasRelevantes ? interpretacionIA.clausulasRelevantes.map((c: string) => `Cláusula ${c}`).join(", ") : "No especificadas"}
     
     Proporciona tu análisis en formato JSON con la siguiente estructura:
     {
@@ -171,17 +170,17 @@ export async function generarPlanImplementacion(
     - Fortalezas: ${interpretacionUsuario.fortalezas}
     - Debilidades: ${interpretacionUsuario.debilidades}
     - Recomendaciones: ${interpretacionUsuario.recomendaciones}
-    - Cláusulas relevantes: ${interpretacionUsuario.clausulas.map((c) => `Cláusula ${c}`).join(", ")}
+    - Cláusulas relevantes: ${interpretacionUsuario.clausulas.map((c: string) => `Cláusula ${c}`).join(", ")}
     - Acciones recomendadas: ${interpretacionUsuario.interpretacionCompleta}
     
     Análisis de la IA:
     - Fortalezas: ${interpretacionIA.fortalezas}
     - Debilidades: ${interpretacionIA.debilidades}
     - Recomendaciones: ${interpretacionIA.recomendaciones}
-    - Cláusulas relevantes: ${interpretacionIA.clausulasRelevantes ? interpretacionIA.clausulasRelevantes.map((c) => `Cláusula ${c}`).join(", ") : "No especificadas"}
+    - Cláusulas relevantes: ${interpretacionIA.clausulasRelevantes ? interpretacionIA.clausulasRelevantes.map((c: string) => `Cláusula ${c}`).join(", ") : "No especificadas"}
     - Acciones recomendadas: ${interpretacionIA.analisisCompleto}
     
-    Proporciona un plan de implementación detallado con la siguiente estructura:
+    Proporciona un plan de implementación con la siguiente estructura:
     
     1. Objetivos: Objetivos claros y medibles para la implementación de ISO 14001
     2. Acciones: Acciones específicas organizadas por fases para implementar la norma

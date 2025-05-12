@@ -8,7 +8,7 @@ import { generarPlanImplementacion } from "@/lib/gemini-service"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { generatePDF } from "@/lib/pdf-service"
+import { generatePlanPDF } from "@/lib/pdf-service"
 
 interface PlanificacionImplementacionProps {
   casoEstudio: string
@@ -146,12 +146,9 @@ ${planImplementacion.planCompleto}
     try {
       setDescargando(true)
 
-      if (planCompletoRef.current && planImplementacion.planCompleto) {
-        await generatePDF(
-          planCompletoRef.current,
-          "plan-implementacion-iso14001.pdf",
-          "Plan de Implementación ISO 14001",
-        )
+      if (planImplementacion.planCompleto) {
+        // Usar la nueva función específica para generar PDF del plan
+        await generatePlanPDF(planImplementacion, "plan-implementacion-iso14001.pdf")
       } else {
         throw new Error("No hay plan de implementación para descargar")
       }
